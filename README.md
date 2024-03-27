@@ -18,6 +18,6 @@ _"Tell me and I forget. Teach me and I remember. Involve me and I learn" - Benja
 * Yuhan Zhou (z5361664)
 
 # Feedback
-Our sees the value in constantly reviewing our modelling and reporting writing procedures as this is a critical aspect of the actuarial control cycle, hence our team strongly welcomes any feedback, especially any criticism that can be used to interatively revise our existing procedures.
+Our team sees the value in constantly reviewing our modelling and reporting writing procedures as this is a critical aspect of the actuarial control cycle, hence our team strongly welcomes any feedback, especially any criticism that can be used to interatively revise our existing procedures.
 
 ![](Actuarial.gif)
