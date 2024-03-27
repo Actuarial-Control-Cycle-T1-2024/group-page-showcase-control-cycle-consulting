@@ -1,24 +1,23 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-24ddc0f5d75046c5622901739e7c5dd533143b0c8e959d652212380cedb1ea36.svg)](https://classroom.github.com/a/biNKOeX_)
 # Actuarial Theory and Practice A @ UNSW
 
 _"Tell me and I forget. Teach me and I remember. Involve me and I learn" - Benjamin Franklin_
 
 ---
 
-### Congrats on completing the [2024 SOA Research Challenge](https://www.soa.org/research/opportunities/2024-student-research-case-study-challenge/)!
+### Control Cycle Consulting presents our submission to the [2024 SOA Research Challenge](https://www.soa.org/research/opportunities/2024-student-research-case-study-challenge/)
 
->Now it's time to build your own website to showcase your work.  
->To create a website on GitHub Pages to showcase your work is very easy.
-
-This is written in markdown language. 
+>Here we provide a detailed report summarising our findings when constructing a wellness program for one of the biggest life insurer's, SuperLife, in a fictitious country called Lumaria.
 >
-* Click [link](https://classroom.github.com/a/biNKOeX_) to accept your group assignment.
+>The main model used to project the cash flows of the newly implemented wellness program and any sensitivity analysis conducted can be accessed [here](https://github.com/Actuarial-Control-Cycle-T1-2024/group-page-showcase-control-cycle-consulting/blob/main/Projection%20of%20Cash%20Flows.xlsm). The additional files provided are supplementary and certain excel spreadsheets provide an indication of background calculations used to create some of the tabs in the main model excel spreadsheet. 
 
-#### Follow the [guide doc](doc1.pdf) to submit your work. 
+# Team Members
+* Aazeen Ashar (z5349309)
+* Divena Rajasundaram (z5363882)
+* Helen Wang (z5364763)
+* Alex Weng (z5308238)
+* Yuhan Zhou (z5361664)
 
-When you finish the task, please paste your link to the Excel [sheet](https://unsw-my.sharepoint.com/:x:/g/personal/z5096423_ad_unsw_edu_au/ETIxmQ6pESRHoHPt-PUleR4BuN0_ghByf7TsfSfgDaBhVg?rtime=GAd2OFNM3Eg) for Peer Feedback
----
->Be creative! Feel free to link to embed your [data](2024-srcsc-superlife-inforce-dataset-part1.csv), [code](sample-data-clean.ipynb), [image](unsw.png) here
+# Feedback
+Our sees the value in constantly reviewing our modelling and reporting writing procedures as this is a critical aspect of the actuarial control cycle, hence our team strongly welcomes any feedback, especially any criticism that can be used to interatively revise our existing procedures.
 
-More information on GitHub Pages can be found [here](https://pages.github.com/)
 ![](Actuarial.gif)
