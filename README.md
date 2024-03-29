@@ -1,5 +1,5 @@
 # Actuarial Theory and Practice A (ACTL4001) - UNSW
-<img src=https://github.com/Actuarial-Control-Cycle-T1-2024/group-page-showcase-control-cycle-consulting/blob/main/SuperLife.png width="300">
+![](SuperLife.png)
 
 ### Control Cycle Consulting presents our submission to the [2024 SOA Research Challenge](https://www.soa.org/research/opportunities/2024-student-research-case-study-challenge/)
 
