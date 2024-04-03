@@ -76,6 +76,7 @@ _3.3 Projected Premiums for Individual Policyholders_
 
 * SWPL: All inforce policyholders are assumed to have paid their single premium at their entry year. Therefore, no further calculations were required.
 * 20-Year-Term Insurance: The zeroization method was used to calculate the individual non-discount premium, this ensured that all products were self-supporting and only had a single financing phase at the outset where project may potentially be negative. These exact premiums are provided below:
+
 <img width="500" alt="image" src="https://github.com/Actuarial-Control-Cycle-T1-2024/group-page-showcase-control-cycle-consulting/assets/164708206/82b01019-bf54-4da0-aec2-83c901ee5c75">
 
 **4 Assumptions**
@@ -94,6 +95,7 @@ Key risks identified were placed into a risk map, following from these various m
 * Technology/cyber risk
 * Changing customer preference risk
 * Regulatory risk
+
 <img width="250" alt="image" src="https://github.com/Actuarial-Control-Cycle-T1-2024/group-page-showcase-control-cycle-consulting/assets/164708206/511e993e-156d-4a41-ba7e-847d88d1e84f">
  
 **6 Data and Data Limitations**
