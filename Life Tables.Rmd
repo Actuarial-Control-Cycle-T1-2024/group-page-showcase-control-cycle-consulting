@@ -1,0 +1,233 @@
+---
+title: " Lumaria Life Table"
+output: html_notebook
+---
+
+**Load Packages**
+
+```{r}
+library(data.table)
+library(dplyr)
+library(splines)
+library(ggplot2)
+library(scales)
+```
+
+**Download Raw Data**
+
+```{r}
+mortality_data <- data.table(read.csv("https://cdn-files.soa.org/research/srcsc/2024-srcsc-superlife-inforce-dataset.csv", skip = 3))
+```
+
+**Check Aggregate Mortality per Year**
+
+We use the total amount of deaths / total individuals alive per year as a general proxy to identify the mortality trend over time, and in particular to check if there are any outliers.
+
+```{r}
+mortality_per_year <- c()
+for (year in 2002:2023){
+  deaths <- mortality_data[Year.of.Death == year,.N,]
+  lives <- mortality_data[Issue.year <= year][
+    (Year.of.Death >= year & is.na(Year.of.Lapse)) |
+                            (Year.of.Lapse >= year & is.na(Year.of.Death) |
+                               (is.na(Year.of.Death) & is.na(Year.of.Lapse))), .N]
+  mortality_per_year <- c(mortality_per_year, deaths/lives)
+}
+plot(2002:2023,mortality_per_year)
+```
+
+**Calculate Class-Based Mortality Rates for 2015-2019**
+
+We choose this investigation interval for recency and to exclude the outlier that is the pandemic period. I use the initial exposed to risk approach, which simply estimates q_x as the deaths during the year by those alive at the beginning of the year.
+
+I chose to split mortality by sex.
+
+```{r}
+AM_lt <- data.table("Age" = 26:83, "Lives" = 0, "Deaths" = 0)
+AF_lt <- data.table("Age" = 26:83, "Lives" = 0, "Deaths" = 0)
+setkey(AM_lt, Age)
+setkey(AF_lt, Age)
+
+for (year in 2015:2019){
+  year_table <- mortality_data[Issue.year <= year & Sex == "M"][
+    (Year.of.Death >= year & is.na(Year.of.Lapse)) |
+                            (Year.of.Lapse >= year & is.na(Year.of.Death) |
+                               (is.na(Year.of.Death) & is.na(Year.of.Lapse))),][, Age := (Issue.age + year - Issue.year)][,                                            .(Lives = .N, Deaths = sum(Year.of.Death == year & !is.na(Year.of.Death))),                                                             Age]
+setkey(year_table, Age)
+merged_table <- year_table[AM_lt, on = "Age"] %>% replace(is.na(.), 0)
+merged_table[, `:=`(Lives = Lives + i.Lives, Deaths = Deaths + i.Deaths)]
+AM_lt <- merged_table[, .(Age, Lives, Deaths)]
+
+year_table <- mortality_data[Issue.year <= year & Sex == "F"][
+    (Year.of.Death >= year & is.na(Year.of.Lapse)) |
+                            (Year.of.Lapse >= year & is.na(Year.of.Death) |
+                               (is.na(Year.of.Death) & is.na(Year.of.Lapse))),][, Age := (Issue.age + year - Issue.year)][,                                            .(Lives = .N, Deaths = sum(Year.of.Death == year & !is.na(Year.of.Death))),                                                             Age]
+setkey(year_table, Age)
+merged_table <- year_table[AF_lt, on = "Age"] %>% replace(is.na(.), 0)
+merged_table[, `:=`(Lives = Lives + i.Lives, Deaths = Deaths + i.Deaths)]
+AF_lt <- merged_table[, .(Age, Lives, Deaths)]
+}
+```
+
+Then I calculate mortality rates and check how they look. Since data is awful after age 80, I crop those ages out.
+
+```{r}
+AM_lt <- AM_lt[,q_x := Deaths/Lives]
+AF_lt <- AF_lt[,q_x := Deaths/Lives]
+plot(AM_lt$Age, AM_lt$q_x)
+plot(AF_lt$Age, AF_lt$q_x)
+AM_lt <- AM_lt[Age <= 80]
+AF_lt <- AF_lt[Age <= 80]
+```
+
+They're still a bit rough, so I apply some P-Splines to graduate the raw rates. I check how nice the curves look and adjust if needed.
+
+```{r}
+model <- lm(q_x ~ bs(Age, knots = c(40, 60), degree = 3, Boundary.knots = range(Age)), data = AM_lt)
+AM_lt$graduated_q_x <- predict(model, AM_lt)
+
+model <- lm(q_x ~ bs(Age, knots = c(40, 60), degree = 3, Boundary.knots = range(Age)), data = AF_lt)
+AF_lt$graduated_q_x <- predict(model, AF_lt)
+
+plot(AM_lt$Age, AM_lt$graduated_q_x)
+plot(AF_lt$Age, AF_lt$graduated_q_x)
+```
+
+Now I calculate the lapse rates. I plot them by time since the policy commenced, to see how it tracks and what would be the appropriate bins to put them in. I use a bigger window here since I don't expect the lapse rate to change much over the years. Note that only T20 policies can lapse, and all of them lapse after 20 years.
+
+```{r}
+lapse_table <- data.table("Term" = 1:19, "Lives" = 0, "Lapses" = 0)
+for (year in 2001:2023){
+year_table <- mortality_data[Issue.year <= year & Policy.type == "T20"][
+    (Year.of.Death >= year & is.na(Year.of.Lapse)) |
+                            (Year.of.Lapse >= year & is.na(Year.of.Death) |
+                               (is.na(Year.of.Death) & is.na(Year.of.Lapse))),][, Term := (year - Issue.year + 1)][,.(Lives = .N,                                     Lapses = sum(Year.of.Lapse == year & !is.na(Year.of.Lapse) & is.na(Year.of.Death))), Term]
+setkey(year_table, Term)
+merged_table <- year_table[lapse_table, on = "Term"] %>% replace(is.na(.), 0)
+merged_table[, `:=`(Lives = Lives + i.Lives, Lapses = Lapses + i.Lapses)]
+lapse_table <- merged_table[, .(Term, Lives, Lapses)]
+}
+lapse_table <- lapse_table[,lapse_rate := Lapses/Lives]
+plot(lapse_table$Term, lapse_table$lapse_rate)
+```
+
+I also need to get the policies in force split by class. I will only choose the 2023 cohort.
+
+```{r}
+policies_in_force_SPWL <- mortality_data[is.na(Year.of.Death) & is.na(Year.of.Lapse) & Policy.type == "SPWL" & Issue.year == 2023][,
+                                    Age := (Issue.age + 2023 - Issue.year)
+                                    ][,
+                                    .(Number = .N, Sum_Insured = sum(Face.amount)),
+                                    .(Policy.type, Age, Sex, Smoker.Status)]
+
+policies_in_force_T20 <- mortality_data[is.na(Year.of.Death) & is.na(Year.of.Lapse) & Policy.type == "T20" & Issue.year == 2023][,
+                                    Age := (Issue.age + 2023 - Issue.year) ][,Term := (2023 - Issue.year + 1)
+                                    ][,
+                                    .(Number = .N, Sum_Insured = sum(Face.amount)),
+                                    .(Policy.type, Age, Term, Sex, Smoker.Status)]
+```
+
+And some plots... First, I plot raw mortality rate for age 30, 50, 70 across 2010-2023.
+
+```{r}
+mortality_over_time_30 <- c()
+mortality_over_time_50 <- c()
+mortality_over_time_70 <- c()
+for (year in 2010:2023){
+  year_table <- mortality_data[Issue.year <= year][, Age := (Issue.age + year - Issue.year)][Age == 30][
+    (Year.of.Death >= year & is.na(Year.of.Lapse)) |
+                            (Year.of.Lapse >= year & is.na(Year.of.Death) |
+                               (is.na(Year.of.Death) & is.na(Year.of.Lapse))),][,                                            .(Lives = .N, Deaths = sum(Year.of.Death == year & !is.na(Year.of.Death))),                                                             Age]
+  mortality_over_time_30 <- c(mortality_over_time_30, year_table$Deaths/year_table$Lives)
+  
+    year_table <- mortality_data[Issue.year <= year][, Age := (Issue.age + year - Issue.year)][Age == 50][
+    (Year.of.Death >= year & is.na(Year.of.Lapse)) |
+                            (Year.of.Lapse >= year & is.na(Year.of.Death) |
+                               (is.na(Year.of.Death) & is.na(Year.of.Lapse))),][,                                            .(Lives = .N, Deaths = sum(Year.of.Death == year & !is.na(Year.of.Death))),                                                             Age]
+  mortality_over_time_50 <- c(mortality_over_time_50, year_table$Deaths/year_table$Lives)
+  
+    year_table <- mortality_data[Issue.year <= year][, Age := (Issue.age + year - Issue.year)][Age == 70][
+    (Year.of.Death >= year & is.na(Year.of.Lapse)) |
+                            (Year.of.Lapse >= year & is.na(Year.of.Death) |
+                               (is.na(Year.of.Death) & is.na(Year.of.Lapse))),][,                                            .(Lives = .N, Deaths = sum(Year.of.Death == year & !is.na(Year.of.Death))),                                                             Age]
+  mortality_over_time_70 <- c(mortality_over_time_70, year_table$Deaths/year_table$Lives)
+}
+
+```
+
+```{r}
+mortality_comparison <- data.table("Year" = 2010:2023, "Age 30" = mortality_over_time_30, "Age 50" = mortality_over_time_50, "Age 70" = mortality_over_time_70)
+
+ggplot(mortality_comparison, aes(x = Year)) + 
+  geom_line(aes(y = `Age 30`, colour = "30")) +
+  geom_line(aes(y = `Age 50`, colour = "50")) +
+  geom_line(aes(y = `Age 70`, colour = "70")) +
+    scale_colour_manual(values = c("30" = "#9370db", 
+                                 "50" = "#add8e6",
+                                 "70" = "red")) +
+    labs(title = "Mortality Over Time, 2010-2019",
+       subtitle = "Ages 30, 50 and 70",
+       x = "Year",
+       y = "q_x",
+       colour = "Age") +
+  theme_classic()
+```
+
+Then, I graph the raw and graduated mortality rates in the investigation period, across the ages analysed.
+
+```{r}
+ggplot(AF_lt, aes(x = Age)) + 
+  geom_point(aes(y = q_x, colour = "Raw"), size = 1.5) + 
+  geom_line(aes(y = graduated_q_x, colour = "Graduated"), size = 1.125) +
+  scale_colour_manual(values = c("Raw" = "#9370db", 
+                                 "Graduated" = "#add8e6")) +
+  labs(title = "Assured Females, 2015-2019",
+       subtitle = "Ages 26 to 80",
+       x = "Age",
+       y = "q_x",
+       colour = "") +
+  theme_classic()
+
+ggplot(AM_lt, aes(x = Age)) + 
+  geom_point(aes(y = q_x, colour = "Raw"), size = 1.5) + 
+  geom_line(aes(y = graduated_q_x, colour = "Graduated"), size = 1.125) +
+  scale_colour_manual(values = c("Raw" = "#9370db", 
+                                 "Graduated" = "#add8e6")) +
+  labs(title = "Assured Males, 2015-2019",
+       subtitle = "Ages 26 to 80",
+       x = "Age",
+       y = "q_x",
+       colour = "") +
+  theme_classic()
+```
+
+Finally, I graph male and female mortality on a log scale. I do this with a file I've already saved somewhere. This will not run if you don't have the file.
+
+```{r}
+combined_genders <- read.csv("combined genders.csv")
+```
+
+```{r}
+ggplot(combined_genders, aes(x = Age)) + 
+  geom_line(aes(y = 100000*Males, colour = "Males")) +
+  geom_line(aes(y = 100000*Females, colour = "Females")) +
+    scale_colour_manual(values = c("Males" = "#add8e6", 
+                                 "Females" = "#9370db")) +
+    labs(title = "Male & Female Mortality Comparison",
+       subtitle = "Prior to Incentives",
+       x = "Age",
+       y = "Deaths per 100,000",
+       colour = "Sex") +
+  scale_y_log10(labels = scales::comma) +
+  theme_classic()
+```
+
+Now I save the data.
+
+```{r}
+write.csv(AM_lt, "Male_Life_Table.csv")
+write.csv(AF_lt, "Female_Life_Table.csv")
+write.csv(lapse_table, "Lapse_Table.csv")
+write.csv(policies_in_force_SPWL, "Policies_in_Force_SPWL.csv")
+write.csv(policies_in_force_T20, "Policies_in_Force_T20.csv")
+```
